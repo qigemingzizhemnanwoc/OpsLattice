@@ -17,7 +17,7 @@ public class EmployeeSaveDTO {
     private Long deptId;
 
     private String position;
-
+    @NotBlank(message = "手机号不能为空")
     private String phone;
 
     private String email;

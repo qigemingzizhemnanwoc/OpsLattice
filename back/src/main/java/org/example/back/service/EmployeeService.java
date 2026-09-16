@@ -112,7 +112,7 @@ public class EmployeeService {
         requireEmployeeModuleAccess();
         SysDept dept = requireEditableDept(dto.getDeptId());
         validateUsernameUnique(dto.getUsername(), null);
-
+        validatePhoneUnique(dto.getPhone(), null);
         SysUser user = buildEmployeeUser(dto, dept, dto.getStatus() == null ? 1 : dto.getStatus());
         sysUserMapper.insert(user);
         sysEmployeeMapper.insert(buildEmployeeProfile(user, dto.getPosition()));
@@ -129,6 +129,7 @@ public class EmployeeService {
         Integer previousStatus = employee.getStatus();
         SysUser user = resolveLinkedUserForUpdate(employee, dto, dept);
         validateUsernameUnique(dto.getUsername(), user.getId());
+        validatePhoneUnique(dto.getPhone(), null);
         assertEmployeeUser(user);
 
         copySharedFieldsToUser(user, dto, dept, dto.getStatus() == null ? user.getStatus() : dto.getStatus());
@@ -332,6 +333,14 @@ public class EmployeeService {
                 .ne(excludeUserId != null, SysUser::getId, excludeUserId);
         if (sysUserMapper.selectCount(wrapper) > 0) {
             throw BusinessException.validateFail("用户名已存在");
+        }
+    }
+    private void validatePhoneUnique(String phone, Long excludeUserId) {
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysUser::getPhone, normalizeRequired(phone, "手机号不能为空"))
+                .ne(excludeUserId != null, SysUser::getId, excludeUserId);
+        if (sysUserMapper.selectCount(wrapper) > 0) {
+            throw BusinessException.validateFail("手机号已存在");
         }
     }
 
