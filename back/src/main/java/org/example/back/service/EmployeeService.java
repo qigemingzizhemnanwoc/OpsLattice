@@ -125,6 +125,9 @@ public class EmployeeService {
         assertEditableEmployeeId(id);
         SysDept dept = requireEditableDept(dto.getDeptId());
         SysEmployee employee = requireEmployee(id);
+        if (Integer.valueOf(0).equals(employee.getStatus())) {
+            throw BusinessException.validateFail("离职员工不允许修改");
+        }
         Long previousDeptId = employee.getDeptId();
         Integer previousStatus = employee.getStatus();
         SysUser user = resolveLinkedUserForUpdate(employee, dto, dept);
