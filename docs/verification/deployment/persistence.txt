@@ -1,0 +1,1 @@
+PASS: restart preserves admin login, database records, stock flows and uploads volume

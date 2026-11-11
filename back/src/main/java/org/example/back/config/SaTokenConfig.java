@@ -21,6 +21,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
      * 不需要登录校验的路径（白名单）
      */
     private static final List<String> WHITE_LIST = Arrays.asList(
+            "/health/ready",       // Container-only readiness, no diagnostic details
             "/auth/login",         // 登录接口
             "/auth/register",           // 注册接口（仅普通用户）
             "/auth/depts",              // 注册页部门下拉

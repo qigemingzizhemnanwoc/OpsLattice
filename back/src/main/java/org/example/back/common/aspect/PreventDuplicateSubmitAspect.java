@@ -32,6 +32,9 @@ public class PreventDuplicateSubmitAspect {
 
     private static final int MAX_CACHE_SIZE = 10000;
     private static final String REDIS_KEY_PREFIX = "wms:dedup:";
+    private static final com.fasterxml.jackson.databind.ObjectMapper FINGERPRINT_MAPPER =
+            new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules()
+                    .configure(com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
 
     private final Map<String, Long> requestWindowMap = new ConcurrentHashMap<>();
 
@@ -42,20 +45,24 @@ public class PreventDuplicateSubmitAspect {
     public void preventDuplicateSubmit(JoinPoint joinPoint, PreventDuplicateSubmit preventDuplicateSubmit) {
         long now = System.currentTimeMillis();
         long intervalMs = preventDuplicateSubmit.intervalMs();
+        if (intervalMs <= 0) throw new IllegalArgumentException("防重窗口必须大于0");
         String requestKey = buildRequestKey(joinPoint);
 
         if (tryAcquireDistributedWindow(requestKey, intervalMs, preventDuplicateSubmit.message())) {
             return;
         }
 
-        requestWindowMap.compute(requestKey, (key, lastTime) -> {
-            if (lastTime != null && now - lastTime < intervalMs) {
+        synchronized (requestWindowMap) {
+            requestWindowMap.entrySet().removeIf(entry -> entry.getValue() <= now);
+            if (requestWindowMap.containsKey(requestKey)) {
                 throw BusinessException.validateFail(preventDuplicateSubmit.message());
             }
-            return now;
-        });
+            if (requestWindowMap.size() >= MAX_CACHE_SIZE) {
+                throw BusinessException.validateFail("服务繁忙，请稍后重试");
+            }
+            requestWindowMap.put(requestKey, now + intervalMs);
+        }
 
-        cleanupIfNecessary(now, intervalMs);
     }
 
     /**
@@ -88,7 +95,7 @@ public class PreventDuplicateSubmitAspect {
         String actor = resolveActor(request);
         String argsFingerprint = fingerprintArgs(joinPoint.getArgs());
 
-        return actor + "|" + method + "|" + path + "|" + argsFingerprint;
+        return fingerprintArgs(new Object[]{actor, method, path, argsFingerprint});
     }
 
     private String resolveActor(HttpServletRequest request) {
@@ -113,20 +120,20 @@ public class PreventDuplicateSubmitAspect {
         if (args == null || args.length == 0) {
             return "no-args";
         }
-        return Arrays.stream(args)
-                .filter(Objects::nonNull)
-                .filter(arg -> !(arg instanceof HttpServletRequest))
-                .filter(arg -> !(arg instanceof BindingResult))
-                .filter(arg -> !(arg instanceof MultipartFile))
-                .map(Object::toString)
-                .collect(Collectors.joining("|"));
+        try {
+            Object[] payload = Arrays.stream(args)
+                    .filter(arg -> !(arg instanceof jakarta.servlet.ServletRequest))
+                    .filter(arg -> !(arg instanceof jakarta.servlet.ServletResponse))
+                    .filter(arg -> !(arg instanceof BindingResult))
+                    .map(arg -> arg instanceof MultipartFile file ? new Object[]{"file", file.getName(), file.getOriginalFilename(), file.getContentType(), file.getSize()} : arg)
+                    .toArray();
+            String json = FINGERPRINT_MAPPER.writeValueAsString(payload);
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(json.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("请求参数无法生成防重标识");
+        }
+
     }
 
-    private void cleanupIfNecessary(long now, long intervalMs) {
-        if (requestWindowMap.size() < MAX_CACHE_SIZE) {
-            return;
-        }
-        long expireThreshold = now - Math.max(intervalMs, 5000L);
-        requestWindowMap.entrySet().removeIf(entry -> entry.getValue() < expireThreshold);
-    }
 }

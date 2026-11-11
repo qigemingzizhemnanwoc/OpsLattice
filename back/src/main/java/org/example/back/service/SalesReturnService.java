@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import org.example.back.entity.BizStockFlow;
+import org.example.back.mapper.BizStockFlowMapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,6 +38,46 @@ import java.util.Map;
 @Service
 public class SalesReturnService {
 
+    @Autowired
+    private BizStockFlowMapper bizStockFlowMapper;
+
+    private void recordStockFlow(
+            Long goodsId,
+            String goodsName,
+            Integer changeQuantity,
+            String bizType,
+            Long bizId,
+            String bizNo,
+            LoginResponse.UserInfoVO loginUser,
+            LocalDateTime operationTime,
+            String remark) {
+
+        BaseGoods latestGoods = baseGoodsMapper.selectOne(new LambdaQueryWrapper<BaseGoods>().eq(BaseGoods::getId, goodsId).last("FOR UPDATE"));
+
+        Integer afterStock = latestGoods.getStock();
+        Integer beforeStock = afterStock - changeQuantity;
+
+        BizStockFlow flow = new BizStockFlow();
+        flow.setGoodsId(goodsId);
+        flow.setGoodsName(goodsName);
+        flow.setChangeQuantity(changeQuantity);
+        flow.setBeforeStock(beforeStock);
+        flow.setAfterStock(afterStock);
+
+        flow.setBizType(bizType);
+        flow.setBizId(bizId);
+        flow.setBizNo(bizNo);
+
+        flow.setOperatorId(loginUser.getId());
+        flow.setOperatorName(loginUser.getRealName());
+
+        flow.setRemark(remark);
+        flow.setOperationTime(operationTime);
+
+        if (bizStockFlowMapper.insert(flow) != 1) {
+            throw new BusinessException("库存流水保存失败");
+        }
+    }
     @Autowired
     private BizSalesReturnMapper bizSalesReturnMapper;
 
@@ -123,6 +165,7 @@ public class SalesReturnService {
 
         bizSalesReturnMapper.insert(entity);
         increaseStock(goods.getId(), dto.getQuantity());
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), entity.getQuantity(), "sales_return", entity.getId(), entity.getReturnNo(), authService.getUserInfo(), LocalDateTime.now(), "create");
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -131,8 +174,13 @@ public class SalesReturnService {
         BizSalesReturn entity = requireEntity(id);
         ensureNormalStatus(entity.getBizStatus(), "客退单");
         validateDeleteWindow(entity.getOperationTime(), "客退单");
+        LambdaQueryWrapper<BizSalesReturn> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.eq(BizSalesReturn::getId, id).eq(BizSalesReturn::getBizStatus, 1);
+        if (bizSalesReturnMapper.delete(deleteWrapper) != 1) {
+            throw BusinessException.validateFail("单据已被处理，禁止重复删除");
+        }
         decreaseStock(entity.getGoodsId(), entity.getQuantity(), "当前库存不足，无法删除该客退单");
-        bizSalesReturnMapper.deleteById(id);
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), -entity.getQuantity(), "sales_return_reverse", entity.getId(), entity.getReturnNo(), authService.getUserInfo(), LocalDateTime.now(), "delete");
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -156,6 +204,7 @@ public class SalesReturnService {
         }
 
         decreaseStock(entity.getGoodsId(), entity.getQuantity(), "当前库存不足，无法作废该客退单");
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), -entity.getQuantity(), "sales_return_reverse", entity.getId(), entity.getReturnNo(), authService.getUserInfo(), LocalDateTime.now(), "voidDocument");
 
         if (dto != null && Boolean.TRUE.equals(dto.getCreateRedFlush())) {
             LoginResponse.UserInfoVO loginUser = authService.getUserInfo();
@@ -209,7 +258,7 @@ public class SalesReturnService {
     }
 
     private BizSales requireSourceSales(Long sourceSalesId) {
-        BizSales sales = bizSalesMapper.selectById(sourceSalesId);
+        BizSales sales = bizSalesMapper.selectOne(new LambdaQueryWrapper<BizSales>().eq(BizSales::getId, sourceSalesId).last("FOR UPDATE"));
         if (sales == null) {
             throw BusinessException.validateFail("来源销售单不存在");
         }
@@ -225,7 +274,7 @@ public class SalesReturnService {
     private void validateReturnableQuantity(BizSales sourceSales, Integer returnQty) {
         LambdaQueryWrapper<BizSalesReturn> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BizSalesReturn::getSourceSalesId, sourceSales.getId())
-                .eq(BizSalesReturn::getBizStatus, 1);
+                .eq(BizSalesReturn::getBizStatus, 1).last("FOR UPDATE");
         List<BizSalesReturn> linkedReturns = bizSalesReturnMapper.selectList(wrapper);
         int returnedQty = linkedReturns.stream().map(BizSalesReturn::getQuantity).reduce(0, Integer::sum);
         int availableQty = sourceSales.getQuantity() - returnedQty;

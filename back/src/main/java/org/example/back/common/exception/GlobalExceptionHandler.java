@@ -26,6 +26,14 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(org.springframework.dao.DuplicateKeyException.class)
+    public Result<?> handleDuplicateKey(org.springframework.dao.DuplicateKeyException e) {
+        String detail = e.getMostSpecificCause().getMessage();
+        String message = detail != null && detail.contains("uk_active_phone") ? "手机号已被使用" :
+                detail != null && detail.contains("uk_username") ? "用户名已被使用（包括历史账号）" : "记录唯一标识冲突，请刷新后重试";
+        return Result.fail(409, message);
+    }
+
     @Autowired
     private SysErrorLogMapper sysErrorLogMapper;
 

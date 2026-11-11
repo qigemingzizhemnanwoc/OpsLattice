@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.example.back.service.RedisDuplicateIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.789 s -- in org.example.back.service.RedisDuplicateIntegrationTest

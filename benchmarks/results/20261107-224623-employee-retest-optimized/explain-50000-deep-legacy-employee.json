@@ -1,0 +1,3 @@
+[ {
+  "EXPLAIN" : "-> Sort: sys_employee.create_time DESC, sys_employee.id DESC  (cost=2759 rows=24940) (actual time=41..44.2 rows=50000 loops=1)\n    -> Index lookup on sys_employee using idx_is_deleted (is_deleted=0)  (cost=2759 rows=24940) (actual time=0.102..28.9 rows=50000 loops=1)\n"
+} ]

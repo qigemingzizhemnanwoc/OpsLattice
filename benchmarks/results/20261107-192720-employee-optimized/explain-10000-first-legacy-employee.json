@@ -1,0 +1,3 @@
+[ {
+  "EXPLAIN" : "-> Sort: sys_employee.create_time DESC, sys_employee.id DESC  (cost=1008 rows=9839) (actual time=4.87..5.39 rows=10000 loops=1)\n    -> Filter: (sys_employee.is_deleted = 0)  (cost=1008 rows=9839) (actual time=0.0376..2.95 rows=10000 loops=1)\n        -> Table scan on sys_employee  (cost=1008 rows=9839) (actual time=0.0364..2.56 rows=10000 loops=1)\n"
+} ]

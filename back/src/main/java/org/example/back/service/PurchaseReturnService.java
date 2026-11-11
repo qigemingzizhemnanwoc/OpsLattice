@@ -27,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import org.example.back.entity.BizStockFlow;
+import org.example.back.mapper.BizStockFlowMapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,6 +42,46 @@ import java.util.stream.Collectors;
 @Service
 public class PurchaseReturnService {
 
+    @Autowired
+    private BizStockFlowMapper bizStockFlowMapper;
+
+    private void recordStockFlow(
+            Long goodsId,
+            String goodsName,
+            Integer changeQuantity,
+            String bizType,
+            Long bizId,
+            String bizNo,
+            LoginResponse.UserInfoVO loginUser,
+            LocalDateTime operationTime,
+            String remark) {
+
+        BaseGoods latestGoods = baseGoodsMapper.selectOne(new LambdaQueryWrapper<BaseGoods>().eq(BaseGoods::getId, goodsId).last("FOR UPDATE"));
+
+        Integer afterStock = latestGoods.getStock();
+        Integer beforeStock = afterStock - changeQuantity;
+
+        BizStockFlow flow = new BizStockFlow();
+        flow.setGoodsId(goodsId);
+        flow.setGoodsName(goodsName);
+        flow.setChangeQuantity(changeQuantity);
+        flow.setBeforeStock(beforeStock);
+        flow.setAfterStock(afterStock);
+
+        flow.setBizType(bizType);
+        flow.setBizId(bizId);
+        flow.setBizNo(bizNo);
+
+        flow.setOperatorId(loginUser.getId());
+        flow.setOperatorName(loginUser.getRealName());
+
+        flow.setRemark(remark);
+        flow.setOperationTime(operationTime);
+
+        if (bizStockFlowMapper.insert(flow) != 1) {
+            throw new BusinessException("库存流水保存失败");
+        }
+    }
     @Autowired
     private BizPurchaseReturnMapper bizPurchaseReturnMapper;
 
@@ -137,6 +179,7 @@ public class PurchaseReturnService {
 
         bizPurchaseReturnMapper.insert(entity);
         decreaseStock(goods.getId(), dto.getQuantity(), "库存不足，无法执行商品退货");
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), -entity.getQuantity(), "purchase_return", entity.getId(), entity.getReturnNo(), authService.getUserInfo(), LocalDateTime.now(), "create");
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -145,8 +188,13 @@ public class PurchaseReturnService {
         BizPurchaseReturn entity = requireEntity(id);
         ensureNormalStatus(entity.getBizStatus(), "进货退货单");
         validateDeleteWindow(entity.getOperationTime(), "进货退货单");
+        LambdaQueryWrapper<BizPurchaseReturn> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.eq(BizPurchaseReturn::getId, id).eq(BizPurchaseReturn::getBizStatus, 1);
+        if (bizPurchaseReturnMapper.delete(deleteWrapper) != 1) {
+            throw BusinessException.validateFail("单据已被处理，禁止重复删除");
+        }
         increaseStock(entity.getGoodsId(), entity.getQuantity());
-        bizPurchaseReturnMapper.deleteById(id);
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), entity.getQuantity(), "purchase_return_reverse", entity.getId(), entity.getReturnNo(), authService.getUserInfo(), LocalDateTime.now(), "delete");
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -169,6 +217,7 @@ public class PurchaseReturnService {
         }
 
         increaseStock(entity.getGoodsId(), entity.getQuantity());
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), entity.getQuantity(), "purchase_return_reverse", entity.getId(), entity.getReturnNo(), authService.getUserInfo(), LocalDateTime.now(), "voidDocument");
         // 如果前端请求中包含 createRedFlush 标志且为 true，则创建对应的红冲单
         if (dto != null && Boolean.TRUE.equals(dto.getCreateRedFlush())) {
             LoginResponse.UserInfoVO loginUser = authService.getUserInfo();
@@ -219,7 +268,7 @@ public class PurchaseReturnService {
     }
 
     private BizPurchase requireSourcePurchase(Long sourcePurchaseId) {
-        BizPurchase purchase = bizPurchaseMapper.selectById(sourcePurchaseId);
+        BizPurchase purchase = bizPurchaseMapper.selectOne(new LambdaQueryWrapper<BizPurchase>().eq(BizPurchase::getId, sourcePurchaseId).last("FOR UPDATE"));
         if (purchase == null) {
             throw BusinessException.validateFail("来源进货单不存在");
         }
@@ -235,7 +284,7 @@ public class PurchaseReturnService {
     private void validateReturnableQuantity(BizPurchase sourcePurchase, Integer returnQty) {
         LambdaQueryWrapper<BizPurchaseReturn> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BizPurchaseReturn::getSourcePurchaseId, sourcePurchase.getId())
-                .eq(BizPurchaseReturn::getBizStatus, 1);
+                .eq(BizPurchaseReturn::getBizStatus, 1).last("FOR UPDATE");
         List<BizPurchaseReturn> linkedReturns = bizPurchaseReturnMapper.selectList(wrapper);
         int returnedQty = linkedReturns.stream().map(BizPurchaseReturn::getQuantity).reduce(0, Integer::sum);
         int availableQty = sourcePurchase.getQuantity() - returnedQty;

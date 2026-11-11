@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/target
+**/dist
+**/*.env
+**/*.local
+.env
+.env.*
+back/src/main/resources/application.properties
+docs

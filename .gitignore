@@ -50,3 +50,4 @@ new.pen
 develop-doxc
 .vscode/launch.json
 .qoder
+!/.env.example

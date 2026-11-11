@@ -1,0 +1,15 @@
+{
+  "historical_commit": "b0abf68",
+  "historical_service_sha256": "ae396a177bf2c632dd1799b6999f06ec5bbba9bb6daa23380257afabcfe9b945",
+  "mode": "employee",
+  "label": "retest-optimized",
+  "component": "mysql  Ver 8.0.46 for Linux on x86_64 (MySQL Community Server - GPL)",
+  "container": "opslattice-bench-709911fc02",
+  "schema_sha256": "c63f5dd111d38864ad88a0396c1dea5ea852e7d6b8d7851dc3bf185e580b7917",
+  "sources": {
+    "back/src/main/java/org/example/back/service/EmployeeService.java": "b98e4a3883c6c927c2230b8e236a35055aa766dfccc0a9ad00cb41423fcc179a",
+    "back/src/main/resources/mapper/SysEmployeeMapper.xml": "f43726e76d1e7c296e3b339ce5230629ff58d1f68f09dcc074d80c79011026b8",
+    "back/src/main/java/org/example/back/common/aspect/PreventDuplicateSubmitAspect.java": "56acc7ba8073f0ae682cd79b4ff22c5360fbca6a7cfd635905aaac28ee67a372",
+    "benchmarks/PerformanceBenchmark.java": "ab412d7c1b5f59419125a17d4921c45b03bb4eb97d823417a68ce1b5902d7a94"
+  }
+}

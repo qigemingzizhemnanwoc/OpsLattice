@@ -1,0 +1,9 @@
+{
+  "historical_commit": "b0abf68",
+  "historical_service_sha256": "ae396a177bf2c632dd1799b6999f06ec5bbba9bb6daa23380257afabcfe9b945",
+  "mode": "redis",
+  "label": "baseline",
+  "component": "Redis server v=7.4.12 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=5e6b576434da555d",
+  "container": "opslattice-bench-de1416dbef",
+  "schema_sha256": "df4386de569482985d5f62793947a5ef6886bb2d15104dc96c53162fe7c01802"
+}

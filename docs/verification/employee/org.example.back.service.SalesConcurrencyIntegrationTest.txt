@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.example.back.service.SalesConcurrencyIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.869 s -- in org.example.back.service.SalesConcurrencyIntegrationTest

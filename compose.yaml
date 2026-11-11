@@ -1,0 +1,80 @@
+name: ecs-portfolio
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set a strong local password}
+      MYSQL_DATABASE: warehouse_management
+      MYSQL_USER: ecs_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set a strong local password}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./deploy/002-disable-demo-accounts.sql:/docker-entrypoint-initdb.d/002-disable-demo-accounts.sql:ro
+      - ./deploy/003-container-login.sql:/docker-entrypoint-initdb.d/003-container-login.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, 'mysqladmin ping -h 127.0.0.1 --silent']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --save, '', --appendonly, 'no']
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  backend:
+    networks:
+      - default
+      - ingress
+    build:
+      context: .
+      dockerfile: back/Dockerfile
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/warehouse_management?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      DB_USERNAME: ecs_app
+      DB_PASSWORD: ${DB_PASSWORD:?Set a strong local password}
+      REDIS_HOST: redis
+      SPRING_DATA_REDIS_CONNECT_TIMEOUT: 2s
+      SPRING_DATA_REDIS_TIMEOUT: 2s
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:?Set a unique 16-64 character initial admin password}
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://localhost:8080/api/health/ready]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  frontend:
+    networks:
+      ingress:
+        ipv4_address: 172.30.94.10
+    build:
+      context: .
+      dockerfile: front/Dockerfile
+    ports:
+      - '127.0.0.1:18080:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, --quiet, --spider, http://127.0.0.1/]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+volumes:
+  mysql-data:
+  uploads:
+networks:
+  ingress:
+    ipam:
+      config:
+        - subnet: 172.30.94.0/24

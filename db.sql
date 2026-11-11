@@ -36,6 +36,8 @@ CREATE TABLE `sys_user` (
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除: 0-正常, 1-删除',
     PRIMARY KEY (`id`),
+    `active_phone` VARCHAR(20) GENERATED ALWAYS AS (CASE WHEN is_deleted=0 THEN NULLIF(TRIM(phone),'') ELSE NULL END) STORED,
+    UNIQUE KEY `uk_active_phone` (`active_phone`),
     UNIQUE KEY `uk_username` (`username`),
     UNIQUE KEY `uk_only_one_superadmin` (`is_superadmin`),
     KEY `idx_role_dept_status` (`role`, `dept_id`, `status`),
@@ -1032,3 +1034,27 @@ CREATE TABLE `ai_model_call_log` (
 -- =============================================
 -- 脚本执行完成
 -- =============================================
+
+-- Stock flow required by PurchaseService
+CREATE TABLE `biz_stock_flow` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `goods_id` bigint NOT NULL COMMENT '商品ID',
+  `goods_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '商品名称',
+  `change_quantity` int NOT NULL COMMENT '库存变化量，正数增加，负数减少',
+  `before_stock` int NOT NULL COMMENT '变更前库存',
+  `after_stock` int NOT NULL COMMENT '变更后库存',
+  `biz_type` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '业务类型: purchase/purchase_return/sales/sales_return/purchase_void等',
+  `biz_id` bigint DEFAULT NULL COMMENT '来源业务单ID',
+  `biz_no` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '来源业务单号',
+  `operator_id` bigint DEFAULT NULL COMMENT '操作人ID',
+  `operator_name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '操作人姓名',
+  `remark` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '备注',
+  `operation_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '业务发生时间',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_goods_id` (`goods_id`),
+  KEY `idx_goods_time` (`goods_id`,`operation_time`),
+  UNIQUE KEY `uk_stock_flow_event` (`biz_type`,`biz_id`),
+  KEY `idx_operator_id` (`operator_id`),
+  KEY `idx_operation_time` (`operation_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='库存变更流水表';

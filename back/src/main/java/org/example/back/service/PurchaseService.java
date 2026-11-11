@@ -10,16 +10,8 @@ import org.example.back.dto.LoginResponse;
 import org.example.back.dto.DocumentVoidDTO;
 import org.example.back.dto.PurchaseQueryDTO;
 import org.example.back.dto.PurchaseSaveDTO;
-import org.example.back.entity.BaseGoods;
-import org.example.back.entity.BaseSupplier;
-import org.example.back.entity.BizApprovalOrder;
-import org.example.back.entity.BizPurchase;
-import org.example.back.entity.BizPurchaseReturn;
-import org.example.back.mapper.BaseGoodsMapper;
-import org.example.back.mapper.BaseSupplierMapper;
-import org.example.back.mapper.BizApprovalOrderMapper;
-import org.example.back.mapper.BizPurchaseMapper;
-import org.example.back.mapper.BizPurchaseReturnMapper;
+import org.example.back.entity.*;
+import org.example.back.mapper.*;
 import org.example.back.vo.PurchaseSourceOptionVO;
 import org.example.back.vo.PurchaseVO;
 import org.springframework.beans.BeanUtils;
@@ -63,10 +55,50 @@ public class PurchaseService {
     @Autowired
     private AuthzService authzService;
 
+    @Autowired
+    private BizStockFlowMapper bizStockFlowMapper;
+
     private void requirePurchaseModuleAccess() {
         authzService.requireDeptAdminOrSuperAdmin(AuthzService.DEPT_PURCHASE, "仅采购部门管理员可访问进货模块");
     }
 
+    private void recordStockFlow(
+            Long goodsId,
+            String goodsName,
+            Integer changeQuantity,
+            String bizType,
+            Long bizId,
+            String bizNo,
+            LoginResponse.UserInfoVO loginUser,
+            LocalDateTime operationTime,
+            String remark) {
+
+        BaseGoods latestGoods = baseGoodsMapper.selectOne(new LambdaQueryWrapper<BaseGoods>().eq(BaseGoods::getId, goodsId).last("FOR UPDATE"));
+
+        Integer afterStock = latestGoods.getStock();
+        Integer beforeStock = afterStock - changeQuantity;
+
+        BizStockFlow flow = new BizStockFlow();
+        flow.setGoodsId(goodsId);
+        flow.setGoodsName(goodsName);
+        flow.setChangeQuantity(changeQuantity);
+        flow.setBeforeStock(beforeStock);
+        flow.setAfterStock(afterStock);
+
+        flow.setBizType(bizType);
+        flow.setBizId(bizId);
+        flow.setBizNo(bizNo);
+
+        flow.setOperatorId(loginUser.getId());
+        flow.setOperatorName(loginUser.getRealName());
+
+        flow.setRemark(remark);
+        flow.setOperationTime(operationTime);
+
+        if (bizStockFlowMapper.insert(flow) != 1) {
+            throw new BusinessException("库存流水保存失败");
+        }
+    }
     public PageResult<PurchaseVO> page(PurchaseQueryDTO queryDTO) {
         requirePurchaseModuleAccess();
         LocalDateTime startTime = queryDTO.getStartDate() == null ? null : queryDTO.getStartDate().atStartOfDay();
@@ -178,23 +210,46 @@ public class PurchaseService {
         purchase.setRemark(dto.getRemark());
         purchase.setBizStatus(1);
 
-        bizPurchaseMapper.insert(purchase);
+        if (bizPurchaseMapper.insert(purchase) != 1) {
+            throw new BusinessException("采购单保存失败");
+        }
+        if (purchase.getId() == null) {
+            throw new BusinessException("采购单ID未回填，无法生成库存流水");
+        }
         increaseStock(goods.getId(), dto.getQuantity());
+        recordStockFlow(
+                goods.getId(),
+                goods.getGoodsName(),
+                dto.getQuantity(),
+                "purchase",
+                purchase.getId(),
+                purchase.getPurchaseNo(),
+                loginUser,
+                operationTime,
+                "采购入库"
+        );
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         requirePurchaseModuleAccess();
+        rejectActiveReturns(id);
         BizPurchase purchase = requirePurchase(id);
         ensureNormalStatus(purchase.getBizStatus(), "进货单");
         validateDeleteWindow(purchase.getOperationTime(), "进货单");
+        LambdaQueryWrapper<BizPurchase> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.eq(BizPurchase::getId, id).eq(BizPurchase::getBizStatus, 1);
+        if (bizPurchaseMapper.delete(deleteWrapper) != 1) {
+            throw BusinessException.validateFail("单据已被处理，禁止重复删除");
+        }
         decreaseStock(purchase.getGoodsId(), purchase.getQuantity(), "当前库存不足，无法删除该进货单");
-        bizPurchaseMapper.deleteById(id);
+        recordStockFlow(purchase.getGoodsId(), purchase.getGoodsName(), -purchase.getQuantity(), "purchase_reverse", purchase.getId(), purchase.getPurchaseNo(), authService.getUserInfo(), LocalDateTime.now(), "delete");
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void voidDocument(Long id, DocumentVoidDTO dto) {
         requirePurchaseVoidExecutionAccess();
+        rejectActiveReturns(id);
         BizPurchase purchase = requirePurchase(id);
         ensureNormalStatus(purchase.getBizStatus(), "进货单");
 
@@ -212,6 +267,7 @@ public class PurchaseService {
         }
 
         decreaseStock(purchase.getGoodsId(), purchase.getQuantity(), "当前库存不足，无法作废该进货单");
+        recordStockFlow(purchase.getGoodsId(), purchase.getGoodsName(), -purchase.getQuantity(), "purchase_reverse", purchase.getId(), purchase.getPurchaseNo(), authService.getUserInfo(), LocalDateTime.now(), "voidDocument");
 
         if (dto != null && Boolean.TRUE.equals(dto.getCreateRedFlush())) {
             LoginResponse.UserInfoVO loginUser = authService.getUserInfo();
@@ -384,5 +440,15 @@ public class PurchaseService {
         vo.setApprovalStatus(approvalOrder == null ? null : approvalOrder.getStatus());
         vo.setApprovalRequestAction(approvalOrder == null ? null : approvalOrder.getRequestAction());
         return vo;
+    }
+
+    private void rejectActiveReturns(Long id) {
+        // Serialize source cancellation with return creation on the same source row.
+        bizPurchaseMapper.selectOne(new LambdaQueryWrapper<BizPurchase>().eq(BizPurchase::getId, id).last("FOR UPDATE"));
+        var returns = bizPurchaseReturnMapper.selectList(new LambdaQueryWrapper<BizPurchaseReturn>()
+                .eq(BizPurchaseReturn::getSourcePurchaseId, id).eq(BizPurchaseReturn::getBizStatus, 1).last("FOR UPDATE"));
+        if (!returns.isEmpty()) {
+            throw BusinessException.validateFail("存在有效退货单，禁止删除或作废来源单据；请先撤销退货");
+        }
     }
 }

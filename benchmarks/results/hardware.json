@@ -1,0 +1,12 @@
+{
+  "cpu": "Intel(R) Core(TM) i7-14700HX",
+  "physicalCores": 20,
+  "logicalProcessors": 28,
+  "hostRamBytes": 16944848896,
+  "dockerVersion": "29.9.2",
+  "dockerOs": "Docker Desktop",
+  "dockerKernel": "6.18.33.2-microsoft-standard-WSL2",
+  "dockerCpus": 28,
+  "dockerMemoryBytes": 8202690560,
+  "existingUnrelatedRunningContainers": 8
+}

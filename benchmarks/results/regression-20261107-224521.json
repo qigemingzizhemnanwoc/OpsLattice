@@ -1,0 +1,139 @@
+{
+  "exitCode": 0,
+  "suites": [
+    {
+      "name": "org.example.back.service.AuthServiceTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.406"
+    },
+    {
+      "name": "org.example.back.service.ContainerAdminInitializerTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.467"
+    },
+    {
+      "name": "org.example.back.service.EmployeeAcceptanceTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "7.88"
+    },
+    {
+      "name": "org.example.back.service.EmployeeDirectoryIntegrationTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.661"
+    },
+    {
+      "name": "org.example.back.service.EmployeeReadOnlyTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.06"
+    },
+    {
+      "name": "org.example.back.service.EmployeeServiceTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.136"
+    },
+    {
+      "name": "org.example.back.service.EmployeeValidationTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.033"
+    },
+    {
+      "name": "org.example.back.service.PurchaseReturnServiceDeleteTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.113"
+    },
+    {
+      "name": "org.example.back.service.PurchaseServiceDeleteTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.073"
+    },
+    {
+      "name": "org.example.back.service.PurchaseServiceTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.08"
+    },
+    {
+      "name": "org.example.back.service.PurchaseStockFlowIntegrationTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.178"
+    },
+    {
+      "name": "org.example.back.service.RedisDuplicateIntegrationTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "4.687"
+    },
+    {
+      "name": "org.example.back.service.SalesConcurrencyIntegrationTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "1.191"
+    },
+    {
+      "name": "org.example.back.service.SalesDeleteTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.141"
+    },
+    {
+      "name": "org.example.back.service.SalesReturnServiceDeleteTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.003"
+    },
+    {
+      "name": "org.example.back.service.UserManageServiceTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.096"
+    }
+  ],
+  "totals": {
+    "tests": 43,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

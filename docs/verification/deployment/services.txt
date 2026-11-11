@@ -1,0 +1,4 @@
+backend running healthy
+frontend running healthy
+mysql running healthy
+redis running healthy

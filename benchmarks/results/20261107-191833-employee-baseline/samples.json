@@ -1,0 +1,7 @@
+[ {
+  "processors" : 28,
+  "os" : "Windows 11",
+  "java" : "17.0.17",
+  "maxHeapBytes" : 2147483648,
+  "label" : "baseline"
+} ]

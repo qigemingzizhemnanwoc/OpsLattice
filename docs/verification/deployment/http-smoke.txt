@@ -1,0 +1,1 @@
+PASS: SPA, proxy, readiness, login, authorization, employee query, sale dedup, stock reversal and flow reconciliation

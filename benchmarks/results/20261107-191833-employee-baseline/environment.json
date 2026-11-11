@@ -1,0 +1,9 @@
+{
+  "historical_commit": "b0abf68",
+  "historical_service_sha256": "ae396a177bf2c632dd1799b6999f06ec5bbba9bb6daa23380257afabcfe9b945",
+  "mode": "employee",
+  "label": "baseline",
+  "component": "mysql  Ver 8.0.46 for Linux on x86_64 (MySQL Community Server - GPL)",
+  "container": "opslattice-bench-b4f8a833c0",
+  "schema_sha256": "df4386de569482985d5f62793947a5ef6886bb2d15104dc96c53162fe7c01802"
+}

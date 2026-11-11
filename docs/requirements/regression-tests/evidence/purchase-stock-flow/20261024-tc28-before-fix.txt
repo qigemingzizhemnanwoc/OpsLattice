@@ -1,0 +1,85 @@
+Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< org.example:back >--------------------------
+[INFO] Building back 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ back ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ back ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ back ---
+[INFO] skip non existing resourceDirectory C:\Users\林窗\Desktop\Collaborative-Operation-Management-System\back\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ back ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 19 source files with javac [debug parameters release 17] to target\test-classes
+[INFO] /C:/Users/林窗/Desktop/Collaborative-Operation-Management-System/back/src/test/java/org/example/back/service/PurchaseServiceTest.java: C:\Users\林窗\Desktop\Collaborative-Operation-Management-System\back\src\test\java\org\example\back\service\PurchaseServiceTest.java使用了未经检查或不安全的操作。
+[INFO] /C:/Users/林窗/Desktop/Collaborative-Operation-Management-System/back/src/test/java/org/example/back/service/PurchaseServiceTest.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ back ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
+[INFO] Running org.example.back.service.PurchaseServiceTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 1.772 s <<< FAILURE! -- in org.example.back.service.PurchaseServiceTest
+[ERROR] org.example.back.service.PurchaseServiceTest.tc28_missingPurchaseIdStopsInventoryWrites -- Time elapsed: 1.747 s <<< FAILURE!
+org.mockito.exceptions.verification.NeverWantedButInvoked: 
+
+baseGoodsMapper.update(
+    isNull(),
+    <any com.baomidou.mybatisplus.core.conditions.Wrapper>
+);
+Never wanted here:
+-> at org.example.back.service.PurchaseServiceTest.tc28_missingPurchaseIdStopsInventoryWrites(PurchaseServiceTest.java:90)
+But invoked here:
+-> at org.example.back.service.PurchaseService.increaseStock(PurchaseService.java:358) with arguments: [null, com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper@cb03411]
+
+	at org.example.back.service.PurchaseServiceTest.tc28_missingPurchaseIdStopsInventoryWrites(PurchaseServiceTest.java:90)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   PurchaseServiceTest.tc28_missingPurchaseIdStopsInventoryWrites:90 
+baseGoodsMapper.update(
+    isNull(),
+    <any com.baomidou.mybatisplus.core.conditions.Wrapper>
+);
+Never wanted here:
+-> at org.example.back.service.PurchaseServiceTest.tc28_missingPurchaseIdStopsInventoryWrites(PurchaseServiceTest.java:90)
+But invoked here:
+-> at org.example.back.service.PurchaseService.increaseStock(PurchaseService.java:358) with arguments: [null, com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper@cb03411]
+
+[INFO] 
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.376 s
+[INFO] Finished at: 2026-10-24T14:32:25+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project back: There are test failures.
+[ERROR] 
+[ERROR] Please refer to C:\Users\林窗\Desktop\Collaborative-Operation-Management-System\back\target\surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

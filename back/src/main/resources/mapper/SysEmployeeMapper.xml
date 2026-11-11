@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.back.mapper.SysEmployeeMapper">
+ <sql id="directory">
+ SELECT e.id,u.username,e.emp_code,e.emp_name,e.dept_id,d.dept_name,e.position,e.phone,e.email,e.status,0 AS read_only,e.create_time
+ FROM sys_employee e LEFT JOIN sys_user u ON u.id=e.user_id AND u.is_deleted=0
+ LEFT JOIN sys_dept d ON d.id=e.dept_id AND d.is_deleted=0 WHERE e.is_deleted=0
+ UNION ALL
+ SELECT -u.id,u.username,CONCAT('USR-',u.username),u.real_name,sd.id,COALESCE(sd.dept_name,'系统管理部'),
+ CASE WHEN u.role='superadmin' THEN '系统超级管理员' ELSE CONCAT(COALESCE(d.dept_name,'部门'),'系统管理员') END,
+ u.phone,u.email,u.status,1,u.create_time
+ FROM sys_user u LEFT JOIN sys_dept d ON d.id=u.dept_id AND d.is_deleted=0
+ LEFT JOIN sys_dept sd ON sd.dept_code='system_management' AND sd.is_deleted=0
+ WHERE u.is_deleted=0 AND u.role IN ('admin','superadmin')
+ </sql>
+ <sql id="filter">
+ <where>
+ <if test="q.empName != null and q.empName.trim() != ''">AND emp_name LIKE CONCAT('%',#{q.empName},'%')</if>
+ <if test="q.deptId != null">AND dept_id=#{q.deptId}</if>
+ <if test="q.status != null">AND status=#{q.status}</if>
+ </where>
+ </sql>
+ <select id="directoryPage" resultType="org.example.back.vo.EmployeeVO">
+ SELECT * FROM (<include refid="directory"/>) directory <include refid="filter"/>
+ ORDER BY create_time DESC,id DESC LIMIT #{size} OFFSET #{offset}
+ </select>
+ <select id="directoryCount" resultType="long">
+ SELECT
+ (SELECT COUNT(*) FROM sys_employee e WHERE e.is_deleted=0
+  <if test="q.empName != null and q.empName.trim() != ''">AND e.emp_name LIKE CONCAT('%',#{q.empName},'%')</if>
+  <if test="q.deptId != null">AND e.dept_id=#{q.deptId}</if>
+  <if test="q.status != null">AND e.status=#{q.status}</if>)
+ +
+ (SELECT COUNT(*) FROM sys_user u
+  LEFT JOIN sys_dept sd ON sd.dept_code='system_management' AND sd.is_deleted=0
+  WHERE u.is_deleted=0 AND u.role IN ('admin','superadmin')
+  <if test="q.empName != null and q.empName.trim() != ''">AND u.real_name LIKE CONCAT('%',#{q.empName},'%')</if>
+  <if test="q.deptId != null">AND sd.id=#{q.deptId}</if>
+  <if test="q.status != null">AND u.status=#{q.status}</if>)
+ </select>
+</mapper>

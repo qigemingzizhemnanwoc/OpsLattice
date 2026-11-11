@@ -1,0 +1,3 @@
+[ {
+  "EXPLAIN" : "-> Sort: sys_employee.create_time DESC, sys_employee.id DESC  (cost=128 rows=5000) (actual time=3.56..3.59 rows=556 loops=1)\n    -> Filter: ((sys_employee.is_deleted = 0) and (sys_employee.emp_name like '%employee 9%'))  (cost=128 rows=5000) (actual time=0.0878..3.49 rows=556 loops=1)\n        -> Index lookup on sys_employee using idx_dept_status (dept_id=900, status=1)  (cost=128 rows=5000) (actual time=0.0836..2.67 rows=5000 loops=1)\n"
+} ]

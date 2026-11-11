@@ -27,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import org.example.back.entity.BizStockFlow;
+import org.example.back.mapper.BizStockFlowMapper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +40,46 @@ import java.util.Map;
 @Service
 public class SalesService {
 
+    @Autowired
+    private BizStockFlowMapper bizStockFlowMapper;
+
+    private void recordStockFlow(
+            Long goodsId,
+            String goodsName,
+            Integer changeQuantity,
+            String bizType,
+            Long bizId,
+            String bizNo,
+            LoginResponse.UserInfoVO loginUser,
+            LocalDateTime operationTime,
+            String remark) {
+
+        BaseGoods latestGoods = baseGoodsMapper.selectOne(new LambdaQueryWrapper<BaseGoods>().eq(BaseGoods::getId, goodsId).last("FOR UPDATE"));
+
+        Integer afterStock = latestGoods.getStock();
+        Integer beforeStock = afterStock - changeQuantity;
+
+        BizStockFlow flow = new BizStockFlow();
+        flow.setGoodsId(goodsId);
+        flow.setGoodsName(goodsName);
+        flow.setChangeQuantity(changeQuantity);
+        flow.setBeforeStock(beforeStock);
+        flow.setAfterStock(afterStock);
+
+        flow.setBizType(bizType);
+        flow.setBizId(bizId);
+        flow.setBizNo(bizNo);
+
+        flow.setOperatorId(loginUser.getId());
+        flow.setOperatorName(loginUser.getRealName());
+
+        flow.setRemark(remark);
+        flow.setOperationTime(operationTime);
+
+        if (bizStockFlowMapper.insert(flow) != 1) {
+            throw new BusinessException("库存流水保存失败");
+        }
+    }
     @Autowired
     private BizSalesMapper bizSalesMapper;
 
@@ -165,21 +207,29 @@ public class SalesService {
 
         bizSalesMapper.insert(entity);
         decreaseStock(goods.getId(), dto.getQuantity(), "库存不足，销售出库失败");
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), -entity.getQuantity(), "sales", entity.getId(), entity.getSalesNo(), authService.getUserInfo(), LocalDateTime.now(), "create");
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         requireSalesModuleAccess();
+        rejectActiveReturns(id);
         BizSales entity = requireEntity(id);
         ensureNormalStatus(entity.getBizStatus(), "销售单");
         validateDeleteWindow(entity.getOperationTime(), "销售单");
+        LambdaQueryWrapper<BizSales> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.eq(BizSales::getId, id).eq(BizSales::getBizStatus, 1);
+        if (bizSalesMapper.delete(deleteWrapper) != 1) {
+            throw BusinessException.validateFail("销售单已被处理，禁止重复删除");
+        }
         increaseStock(entity.getGoodsId(), entity.getQuantity());
-        bizSalesMapper.deleteById(id);
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), entity.getQuantity(), "sales_reverse", entity.getId(), entity.getSalesNo(), authService.getUserInfo(), LocalDateTime.now(), "delete");
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void voidDocument(Long id, DocumentVoidDTO dto) {
         requireSalesVoidExecutionAccess();
+        rejectActiveReturns(id);
         BizSales entity = requireEntity(id);
         ensureNormalStatus(entity.getBizStatus(), "销售单");
 
@@ -197,6 +247,7 @@ public class SalesService {
         }
 
         increaseStock(entity.getGoodsId(), entity.getQuantity());
+        recordStockFlow(entity.getGoodsId(), entity.getGoodsName(), entity.getQuantity(), "sales_reverse", entity.getId(), entity.getSalesNo(), authService.getUserInfo(), LocalDateTime.now(), "voidDocument");
 
         if (dto != null && Boolean.TRUE.equals(dto.getCreateRedFlush())) {
             LoginResponse.UserInfoVO loginUser = authService.getUserInfo();
@@ -366,5 +417,15 @@ public class SalesService {
     }
 
     private record CostSnapshot(BigDecimal unitPrice, String source) {
+    }
+
+    private void rejectActiveReturns(Long id) {
+        // Serialize source cancellation with return creation on the same source row.
+        bizSalesMapper.selectOne(new LambdaQueryWrapper<BizSales>().eq(BizSales::getId, id).last("FOR UPDATE"));
+        var returns = bizSalesReturnMapper.selectList(new LambdaQueryWrapper<BizSalesReturn>()
+                .eq(BizSalesReturn::getSourceSalesId, id).eq(BizSalesReturn::getBizStatus, 1).last("FOR UPDATE"));
+        if (!returns.isEmpty()) {
+            throw BusinessException.validateFail("存在有效退货单，禁止删除或作废来源单据；请先撤销退货");
+        }
     }
 }

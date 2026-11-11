@@ -63,22 +63,21 @@ public class EmployeeService {
 
     public PageResult<EmployeeVO> page(EmployeeQueryDTO queryDTO) {
         requireEmployeeModuleAccess();
-        syncRegisteredEmployeeProfiles();
-        SysDept systemDept = resolveSystemManagementDept();
-        List<EmployeeVO> records = new ArrayList<>();
-        records.addAll(listEmployeeRecords(queryDTO));
-        records.addAll(listManagementUserRecords(queryDTO, systemDept));
-        records.sort(Comparator
-                .comparing(EmployeeVO::getCreateTime, Comparator.nullsLast(Comparator.reverseOrder()))
-                .thenComparing(EmployeeVO::getId, Comparator.nullsLast(Comparator.reverseOrder())));
+        long number = queryDTO.getPageNum() == null || queryDTO.getPageNum() < 1 ? 1 : queryDTO.getPageNum();
+        long size = queryDTO.getPageSize() == null || queryDTO.getPageSize() < 1 ? 10 : queryDTO.getPageSize();
+        if (size > 200 || number > Long.MAX_VALUE / size) {
+            throw BusinessException.validateFail("分页参数超出允许范围，每页最多200条");
+        }
+        long total = sysEmployeeMapper.directoryCount(queryDTO);
+        var records = sysEmployeeMapper.directoryPage(queryDTO, (number - 1) * size, size);
+        return new PageResult<>(records, total, number, size, (total + size - 1) / size);
+    }
 
-        long total = records.size();
-        long pageNum = queryDTO.getPageNum() == null || queryDTO.getPageNum() < 1 ? 1L : queryDTO.getPageNum();
-        long pageSize = queryDTO.getPageSize() == null || queryDTO.getPageSize() < 1 ? 10L : queryDTO.getPageSize();
-        int fromIndex = (int) Math.min((pageNum - 1) * pageSize, total);
-        int toIndex = (int) Math.min(fromIndex + pageSize, total);
-        long pages = pageSize == 0 ? 0 : (total + pageSize - 1) / pageSize;
-        return new PageResult<>(records.subList(fromIndex, toIndex), total, pageNum, pageSize, pages);
+    /** Explicit maintenance operation; never invoked by GET requests. */
+    @Transactional(rollbackFor = Exception.class)
+    public void repairLegacyProfiles() {
+        requireEmployeeModuleAccess();
+        syncRegisteredEmployeeProfiles();
     }
 
     private List<EmployeeVO> listEmployeeRecords(EmployeeQueryDTO queryDTO) {
@@ -132,7 +131,7 @@ public class EmployeeService {
         Integer previousStatus = employee.getStatus();
         SysUser user = resolveLinkedUserForUpdate(employee, dto, dept);
         validateUsernameUnique(dto.getUsername(), user.getId());
-        validatePhoneUnique(dto.getPhone(), null);
+        validatePhoneUnique(dto.getPhone(), user.getId());
         assertEmployeeUser(user);
 
         copySharedFieldsToUser(user, dto, dept, dto.getStatus() == null ? user.getStatus() : dto.getStatus());

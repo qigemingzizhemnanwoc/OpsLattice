@@ -1,0 +1,15 @@
+{
+  "historical_commit": "b0abf68",
+  "historical_service_sha256": "ae396a177bf2c632dd1799b6999f06ec5bbba9bb6daa23380257afabcfe9b945",
+  "mode": "redis",
+  "label": "retest-after",
+  "component": "Redis server v=7.4.12 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=5e6b576434da555d",
+  "container": "opslattice-bench-6a9a82127e",
+  "schema_sha256": "c63f5dd111d38864ad88a0396c1dea5ea852e7d6b8d7851dc3bf185e580b7917",
+  "sources": {
+    "back/src/main/java/org/example/back/service/EmployeeService.java": "b98e4a3883c6c927c2230b8e236a35055aa766dfccc0a9ad00cb41423fcc179a",
+    "back/src/main/resources/mapper/SysEmployeeMapper.xml": "f43726e76d1e7c296e3b339ce5230629ff58d1f68f09dcc074d80c79011026b8",
+    "back/src/main/java/org/example/back/common/aspect/PreventDuplicateSubmitAspect.java": "56acc7ba8073f0ae682cd79b4ff22c5360fbca6a7cfd635905aaac28ee67a372",
+    "benchmarks/PerformanceBenchmark.java": "8478468491f4ffb70723122c6b7daf05c9d3a8d4987e54709f0b229e7a678655"
+  }
+}

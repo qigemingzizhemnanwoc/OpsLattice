@@ -1,0 +1,9 @@
+SCHEMA_NAME
+warehouse_management_purchase_test
+TABLE_NAME	ENGINE
+base_goods	InnoDB
+biz_purchase	InnoDB
+biz_stock_flow	InnoDB
+purchase_id	purchase_no	goods_id	stock	flow_id	before_stock	change_quantity	after_stock
+1	PUR261023165603377	1	15	1	10	5	15
+
