@@ -250,9 +250,17 @@ DEEPSEEK_API_KEY=sk-kfccrazythursdayvmefiftyrmb
 
 ## 二次开发与工程化状态
 
-本仓库基于原始项目 https://github.com/shanqiu127/Warehouse-Management-System- 进行二次开发；公开发布授权仍待确认，不将原作者已有的管理、进销存、权限和AI功能描述为个人原创。
+本仓库基于原始项目 https://github.com/shanqiu127/Warehouse-Management-System- 进行二次开发，并已取得原作者授权。
 
-本次实际改造：库存条件状态转换、并发退货与流水；员工只读数据库分页、校验和唯一约束；Redis请求指纹及有界降级；Docker Compose本地部署、健康检查与安全初始账号。2026-11-06最终统一JUnit42项通过（原40项+初始化2项），四容器及真实HTTP业务、重启持久化通过；远程CI尚未执行。详见docs中的验收报告。
+已完成改造：
+
+- 库存条件状态转换、并发退货与库存流水；
+- 员工只读数据库分页、校验与唯一约束；
+- Redis 请求指纹与有界降级；
+- Docker Compose 本地部署、健康检查与安全初始账号；
+- 数据 Agent：Spring AI + DeepSeek，自主调用库存/销售只读工具，支持多轮追问、权限收口与工具调用轨迹。
+
+2026-11-11 本地全量 76 项 JUnit 测试通过，前端构建通过；Docker Compose 四容器、真实 HTTP 业务与重启持久化验证通过；真实 DeepSeek 两轮验收与 SQL 对账通过。详见 `docs/deployment-acceptance.md` 与 `docs/verification/agent-acceptance.md`。
 
 ### 本地隔离Compose方案（已通过限定范围验收）
 复制`.env.example`为`.env`，填写独立的`MYSQL_ROOT_PASSWORD`、`DB_PASSWORD`及`ADMIN_INITIAL_PASSWORD`，然后执行`docker compose up --build -d`。管理员初始密码必须为16–64位且含字母和数字，不提交`.env`。仅访问`http://localhost:18080`。MySQL与Redis不发布主机端口，避免连接本机已有业务服务。
@@ -262,7 +270,5 @@ DEEPSEEK_API_KEY=sk-kfccrazythursdayvmefiftyrmb
 MySQL只在空命名卷执行初始化；已有卷不会自动运行迁移。增量脚本在docs/migrations，必须检查版本、备份及冲突后执行。不要用`docker compose down -v`排错，它会删除数据。日志入口为`docker compose logs backend`。Nginx专用网段172.30.94.0/24及精确IP白名单位于Compose和deploy/003-container-login.sql；若与本机网络冲突，需同步调整。验收脚本`deploy/verify-local.py`固定操作本轮`ecs-stage4-20261106`项目，不对生产使用。
 
 ### 持续集成
-`.github/workflows/verify.yml`配置Java17、临时MySQL/Redis、42项指定验收测试、Vue及前后端Docker镜像构建，不自动发布。临时MySQL无密码仅用于GitHub作业本地回环端口，禁止复用于部署。远程GitHub Actions尚未运行，不展示通过徽章。
-真实Redis断连测试可通过`REDIS_TEST_SERVER`指定redis-server可执行文件，Linux CI使用`/usr/bin/redis-server`。本地测试需要专用PURCHASE_TEST_*连接，不能使用业务库。
-
-截图尚未补充；不使用伪造运行截图。第四阶段完整验证状态见docs/deployment-acceptance.md。
+`.github/workflows/verify.yml` 配置 Java 17、临时 MySQL/Redis、全量验收测试、Vue 及前后端 Docker 镜像构建，不自动发布。临时 MySQL 无密码仅用于 GitHub 作业本地回环端口，禁止复用于部署。
+真实 Redis 断连测试可通过 `REDIS_TEST_SERVER` 指定 redis-server 可执行文件，Linux CI 使用 `/usr/bin/redis-server`。本地测试需要专用 `PURCHASE_TEST_*` 连接，不能使用业务库。
