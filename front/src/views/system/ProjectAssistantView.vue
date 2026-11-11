@@ -86,6 +86,9 @@
                   />
                 </el-select>
               </div>
+              <button class="agent-entry-btn" @click="agentOpen = true">
+                数据 Agent
+              </button>
             </div>
           </div>
         </div>
@@ -255,6 +258,7 @@
         </template>
       </div>
     </div>
+    <AgentPanel v-if="agentOpen" @close="agentOpen = false" />
   </div>
 </template>
 
@@ -264,6 +268,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { isSuperAdmin, isAdminRole, isEmployeeRole } from '@/utils/auth'
 import { queryAssistantAPI, getSuggestionsAPI, getAssistantModelsAPI } from '@/api/projectAssistant'
+import AgentPanel from '@/components/agent/AgentPanel.vue'
 import {
   clearAllConversationsAPI,
   createConversationAPI,
@@ -274,6 +279,7 @@ import {
 } from '@/api/aiConversation'
 
 const userStore = useUserStore()
+const agentOpen = ref(false)
 const chatAreaRef = ref(null)
 const inputText = ref('')
 const isLoading = ref(false)
@@ -1376,6 +1382,25 @@ onMounted(async () => {
   justify-content: flex-start;
   gap: 8px;
   min-width: 0;
+}
+
+.agent-entry-btn {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.agent-entry-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .mode-switch {

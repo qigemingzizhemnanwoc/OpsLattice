@@ -90,7 +90,7 @@ flowchart LR
 ## 🛠️ 技术栈
 
 - 前端：Vue 3、Vite、Element Plus、Pinia、Vue Router、Axios、ECharts
-- 后端：Spring Boot 3.3.5、MyBatis-Plus 3.5.5、Sa-Token 1.37.0
+- 后端：Spring Boot 3.4.13、Spring AI 1.0.9（DeepSeek）、MyBatis-Plus 3.5.5、Sa-Token 1.37.0
 - 数据库：MySQL 8.0
 - 运行环境：JDK 17、Node.js 16+
 
@@ -189,6 +189,29 @@ KIMI_ENDPOINT=https://api.moonshot.cn/v1/chat/completions
 KIMI_MODEL_CODE=moonshot-v1-8k
 DEEPSEEK_API_KEY=
 ```
+
+### 数据 Agent（只读库存/销售工具）
+
+AI 助手页顶部新增“数据 Agent”入口，所有角色都能进入；Agent 只做只读查询，不修改任何业务数据。
+
+- 模型接入：Spring AI 1.0.9 + DeepSeek `deepseek-chat`，Key 从环境变量 `DEEPSEEK_API_KEY` 读取。
+- 本地 Key：在 `back/assistant-llm.env` 中填写 `DEEPSEEK_API_KEY=...`，不要提交该文件。
+- 工具调用：由模型自行判断调用库存不足、库存明细、按商品销售、销售概览四个只读工具。
+- 多轮对话：第一轮查库存不足后，第二轮“这些商品的销售情况”会复用上一轮商品 ID。
+- 权限：严格复用现有 Java 代码的权限校验，不新增角色权限。
+
+| 工具 | 可用角色（与现有页面一致） |
+|---|---|
+| 库存不足 | 超管、仓储、采购、销售管理员 |
+| 库存明细 | 超管、仓储管理员 |
+| 按商品销售 | 超管、销售管理员 |
+| 销售概览 | 超管、财务管理员 |
+| 员工 | 无数据工具 |
+
+接口前缀为 `/api/assistant/agent`：`POST /chat`、`GET /conversations`、`GET /conversations/{id}/messages`、`DELETE /conversations/{id}`、`GET /status`、`GET /tools`。
+没有配置 Key 时应用仍可正常启动，Agent 会返回“DeepSeek 尚未配置”的提示，不影响现有项目问答和业务页面。
+
+2026-11-09 数据 Agent 新增 16 项测试，本地全量 60 项 JUnit 测试通过（含原 44 项基线）；真实 DeepSeek Key 的两轮验收记录见 `docs/verification/agent-acceptance.md`。
 
 
 

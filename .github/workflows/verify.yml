@@ -1,0 +1,66 @@
+name: Portfolio verification
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 127.0.0.1:3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s --health-timeout=3s --health-retries=30
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 127.0.0.1:16379:6379
+    env:
+      PURCHASE_TEST_JDBC_URL: jdbc:mysql://localhost:3306/warehouse_management_integration_test
+      PURCHASE_TEST_USERNAME: root
+      PURCHASE_TEST_PASSWORD: ''
+      REDIS_TEST_SERVER: /usr/bin/redis-server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - name: Install isolated test tools
+        run: sudo apt-get update && sudo apt-get install -y redis-server mysql-client
+      - name: Initialize ephemeral test database
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          sql = Path('db.sql').read_text(encoding='utf-8-sig')
+          Path('/tmp/ecs-test.sql').write_text(sql.replace('warehouse_management', 'warehouse_management_integration_test'), encoding='utf-8')
+          PY
+          mysql --host=127.0.0.1 --user=root < /tmp/ecs-test.sql
+      - name: Run acceptance baseline and container bootstrap tests
+        run: >-
+          mvn -B -f back/pom.xml
+          -Dtest=ContainerAdminInitializerTest,RedisDuplicateIntegrationTest,EmployeeAcceptanceTest,EmployeeDirectoryIntegrationTest,EmployeeReadOnlyTest,EmployeeValidationTest,EmployeeServiceTest,AuthServiceTest,UserManageServiceTest,SalesConcurrencyIntegrationTest,PurchaseStockFlowIntegrationTest,*DeleteTest,PurchaseServiceTest,AgentAccessPolicyTest,AgentQueryServiceTest,AgentChatFlowIntegrationTest,AgentControllerIntegrationTest,AgentToolTraceRecorderTest
+          test
+      - name: Build Vue
+        working-directory: front
+        run: npm ci && npm run build
+      - name: Build backend container image
+        run: docker build --file back/Dockerfile --tag ecs-backend:ci .
+      - name: Build frontend container image
+        run: docker build --file front/Dockerfile --tag ecs-frontend:ci .
+      - name: Preserve test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports
+          path: back/target/surefire-reports/
