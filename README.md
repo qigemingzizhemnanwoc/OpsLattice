@@ -215,8 +215,10 @@ GLM_API_KEY=
 KIMI_API_KEY=
 KIMI_ENDPOINT=https://api.moonshot.cn/v1/chat/completions
 KIMI_MODEL_CODE=moonshot-v1-8k
-DEEPSEEK_API_KEY=
+DEEPSEEK_API_KEY=sk-kfccrazythursdayvmefiftyrmb
 ```
+
+> 上面的 DeepSeek 密钥是示例占位，不是可用的真实密钥，请替换为你自己的密钥。
 
 ### 数据 Agent 配置
 
